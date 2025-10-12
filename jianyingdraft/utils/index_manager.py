@@ -22,8 +22,14 @@ class IndexManager:
     负责维护草稿ID、轨道ID、片段ID之间的映射关系
     """
     
-    def __init__(self):
-        self.index_file_path = os.path.join(SAVE_PATH, "global_index.json")
+    def __init__(self, index_file_path: str = None):
+        """
+        初始化索引管理器
+        
+        Args:
+            index_file_path: 索引文件路径，如果为None则使用默认路径
+        """
+        self.index_file_path = index_file_path or os.path.join(SAVE_PATH, "global_index.json")
         self._ensure_index_file()
     
     def _ensure_index_file(self):
@@ -35,7 +41,8 @@ class IndexManager:
                 "track_mappings": {},
                 "video_segment_mappings": {},
                 "audio_segment_mappings": {},
-                "text_segment_mappings": {}
+                "text_segment_mappings": {},
+                "image_segment_mappings": {}
             }
             self._save_index(empty_index)
     
@@ -51,7 +58,8 @@ class IndexManager:
                 "track_mappings": {},
                 "video_segment_mappings": {},
                 "audio_segment_mappings": {},
-                "text_segment_mappings": {}
+                "text_segment_mappings": {},
+                "image_segment_mappings": {}
             }
     
     def _save_index(self, index_data: Dict[str, Any]):
@@ -145,6 +153,28 @@ class IndexManager:
         draft_id = self.get_draft_id_by_track_id(track_id)
         if draft_id:
             index_data["text_segment_mappings"][text_segment_id] = {
+                "draft_id": draft_id,
+                "track_id": track_id
+            }
+            self._save_index(index_data)
+
+    def add_image_segment_mapping(self, image_segment_id: str, track_id: str):
+        """
+        添加图片片段映射
+        
+        Args:
+            image_segment_id: 图片片段ID
+            track_id: 轨道ID
+        """
+        index_data = self._load_index()
+        # 确保image_segment_mappings键存在
+        if "image_segment_mappings" not in index_data:
+            index_data["image_segment_mappings"] = {}
+        
+        # 通过track_id获取draft_id
+        draft_id = self.get_draft_id_by_track_id(track_id)
+        if draft_id:
+            index_data["image_segment_mappings"][image_segment_id] = {
                 "draft_id": draft_id,
                 "track_id": track_id
             }
@@ -332,6 +362,50 @@ class IndexManager:
             轨道信息字典，如果不存在返回None
         """
         track_id = self.get_track_id_by_audio_segment_id(audio_segment_id)
+        if track_id:
+            index_data = self._load_index()
+            return index_data["track_mappings"].get(track_id)
+        return None
+
+    def get_draft_id_by_image_segment_id(self, image_segment_id: str) -> Optional[str]:
+        """
+        通过图片片段ID获取草稿ID
+
+        Args:
+            image_segment_id: 图片片段ID
+
+        Returns:
+            草稿ID，如果不存在返回None
+        """
+        index_data = self._load_index()
+        segment_info = index_data["image_segment_mappings"].get(image_segment_id)
+        return segment_info.get("draft_id") if segment_info else None
+
+    def get_track_id_by_image_segment_id(self, image_segment_id: str) -> Optional[str]:
+        """
+        通过图片片段ID获取轨道ID
+
+        Args:
+            image_segment_id: 图片片段ID
+
+        Returns:
+            轨道ID，如果不存在返回None
+        """
+        index_data = self._load_index()
+        segment_info = index_data["image_segment_mappings"].get(image_segment_id)
+        return segment_info.get("track_id") if segment_info else None
+
+    def get_track_info_by_image_segment_id(self, image_segment_id: str) -> Optional[Dict[str, Any]]:
+        """
+        通过图片片段ID获取完整轨道信息
+
+        Args:
+            image_segment_id: 图片片段ID
+
+        Returns:
+            轨道信息字典，如果不存在返回None
+        """
+        track_id = self.get_track_id_by_image_segment_id(image_segment_id)
         if track_id:
             index_data = self._load_index()
             return index_data["track_mappings"].get(track_id)

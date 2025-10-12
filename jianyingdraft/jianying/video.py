@@ -42,7 +42,8 @@ class VideoSegment:
                           source_timerange: Optional[str] = None, speed: Optional[float] = None,
                           volume: float = 1.0, change_pitch: bool = False,
                           clip_settings: Optional[Dict[str, Any]] = None,
-                          track_name: Optional[str] = None) -> Dict[str, Any]:
+                          track_name: Optional[str] = None,
+                          material_type: str = "video") -> Dict[str, Any]:
         """
         创建视频片段配置
 
@@ -65,6 +66,7 @@ class VideoSegment:
                         "transform_y": 0.0  # 垂直位移, 单位为半个画布高. 默认为0.0.
                         }
             track_name: 指定的轨道名称（可选），如果不指定则使用实例的track_name
+            material_type: 素材类型，支持 "video", "image"，默认为 "video"
 
         Returns:
             Dict[str, Any]: 构造的参数字典
@@ -100,7 +102,7 @@ class VideoSegment:
         local_material_path = download_and_validate_material(
             self.draft_id,
             material,
-            "video",
+            material_type,
             target_timerange_data
         )
 
@@ -510,7 +512,7 @@ class VideoSegment:
         if not track_manager.validate_track_exists(track_name):
             raise NameError(f"轨道不存在: {track_name}")
 
-        # 检查轨道类型是否为视频类型
+        # 检查轨道类型是否为视频类型（支持视频和图片）
         track_info = track_manager.get_track_by_name(track_name)
         if track_info:
             add_track_data = track_info.get("add_track", {})

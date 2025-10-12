@@ -19,6 +19,7 @@ from jianyingdraft.tool.video_tool import video_tools
 from jianyingdraft.tool.text_tool import text_tools
 from jianyingdraft.tool.audio_tool import audio_tools
 from jianyingdraft.tool.utility_tool import utility_tools
+from jianyingdraft.tool.image_tool import image_tools
 
 
 def main():
@@ -29,6 +30,7 @@ def main():
     text_tools(mcp)
     audio_tools(mcp)
     utility_tools(mcp)
+    image_tools(mcp)
     mcp.run()
 
 
