@@ -26,15 +26,16 @@ def draft_tools(mcp: FastMCP):
         """制作视频的规范，这一步必须执行，方便了解如何规范的使用工具制作视频"""
         prompt = """
 核心工作原则
-1.询问用户应当怎么制作视频，有什么建议，你可以使用parse_media_info（了解素材信息），然后不断地向用户询问制作视频的细节，在制作前，你应该向用户说明你准备怎么制作视频，用户没有意见后才开始制作视频
-
+1.充分理解用户的需求，识别用户素材类型，根据用户需求分析出对应的特效和关键帧
 2. 严格遵循操作流程
 必须按照以下顺序执行，不可跳步骤：
 创建草稿 → create_draft
 创建轨道 → create_track（根据需要创建video、audio、text轨道）
-添加素材 → add_*_segment（添加视频、音频、文本片段）
+分析素材类型 -> png, jpg, jpeg, mp4, mov, avi, mkv, wav, mp3, txt
+根据类型添加素材 → add_*_segment（添加图片、视频、音频、文本片段）
 查询特效 → find_effects_by_type（查找可用特效）
 应用特效 → add_*_effect/animation（添加各种特效和动画）
+制作关键帧 → add_*_keyframe(添加各种关键帧)
 导出草稿 → export_draft
 
 3. ID管理规则

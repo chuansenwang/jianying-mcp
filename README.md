@@ -112,6 +112,9 @@ uv sync
 
 ```bash
 uv run mcp dev jianyingdraft/server.py
+
+image.png
+--directory "F:/aigc/jianying-mcp/jianyingdraft" run server.py
 ```
 
 

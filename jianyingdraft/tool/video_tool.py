@@ -9,6 +9,7 @@ from jianyingdraft.services.video_service import add_video_segment_service, add_
     add_video_transition_service, add_video_keyframe_service, add_video_filter_service, \
     add_video_background_filling_service, \
     add_video_mask_service, add_video_effect_service
+from jianyingdraft.services.image_service import add_image_segment_service
 from jianyingdraft.utils.response import ToolResponse
 from jianyingdraft.utils.index_manager import index_manager
 from jianyingdraft.utils.time_format import parse_start_end_format
@@ -105,23 +106,63 @@ def video_tools(mcp: FastMCP):
                 message=f"未找到轨道ID对应的轨道名: {track_id}"
             )
 
-        # 调用服务层处理业务逻辑
-        result = add_video_segment_service(
-            draft_id=draft_id,
-            material=material,
-            target_timerange=target_timerange,
-            source_timerange=source_timerange,
-            speed=speed,
-            volume=volume,
-            change_pitch=change_pitch,
-            clip_settings=clip_settings,
-            track_name=track_name
-        )
+        # 判断素材类型（根据扩展名进行快速判断）
+        ext = None
+        try:
+            import os
+            # 支持 URL 的简单解析，优先从路径提取扩展名
+            if material:
+                if material.startswith('http://') or material.startswith('https://'):
+                    from urllib.parse import urlparse
+                    parsed = urlparse(material)
+                    ext = os.path.splitext(parsed.path)[1].lower()
+                else:
+                    ext = os.path.splitext(material)[1].lower()
+        except Exception:
+            ext = None
+
+        # 若为图片素材，走图片片段服务；否则走视频片段服务
+        image_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
+        if ext in image_exts:
+            # 从目标时间范围中提取持续时长作为图片显示时长
+            try:
+                display_duration = target_timerange.split('-', 1)[1]
+            except Exception:
+                display_duration = '5s'
+
+            result = add_image_segment_service(
+                draft_id=draft_id,
+                material=material,
+                target_timerange=target_timerange,
+                display_duration=display_duration,
+                clip_settings=clip_settings,
+                track_name=track_name
+            )
+        else:
+            # 调用服务层处理业务逻辑（视频）
+            result = add_video_segment_service(
+                draft_id=draft_id,
+                material=material,
+                target_timerange=target_timerange,
+                source_timerange=source_timerange,
+                speed=speed,
+                volume=volume,
+                change_pitch=change_pitch,
+                clip_settings=clip_settings,
+                track_name=track_name
+            )
 
         # 如果视频片段添加成功，添加索引记录
-        if result.success and result.data and "video_segment_id" in result.data:
-            video_segment_id = result.data["video_segment_id"]
-            index_manager.add_video_segment_mapping(video_segment_id, track_id)
+        if result.success and result.data:
+            # 成功添加视频片段
+            if "video_segment_id" in result.data:
+                video_segment_id = result.data["video_segment_id"]
+                index_manager.add_video_segment_mapping(video_segment_id, track_id)
+            # 成功添加图片片段（通过视频逻辑生成的ID）
+            elif "image_segment_id" in result.data:
+                image_segment_id = result.data["image_segment_id"]
+                # 某些服务返回的数据可能嵌套在data中
+                index_manager.add_image_segment_mapping(image_segment_id, track_id)
 
         return result
 
@@ -184,9 +225,14 @@ def video_tools(mcp: FastMCP):
                 }
             )
 
-        # 通过video_segment_id获取相关信息
+        # 通过segment_id获取相关信息（兼容图片片段）
         draft_id = index_manager.get_draft_id_by_video_segment_id(video_segment_id)
         track_info = index_manager.get_track_info_by_video_segment_id(video_segment_id)
+        # 若视频片段索引未命中，尝试图片片段索引
+        if not draft_id:
+            draft_id = index_manager.get_draft_id_by_image_segment_id(video_segment_id)
+        if not track_info:
+            track_info = index_manager.get_track_info_by_image_segment_id(video_segment_id)
         print(duration, type(duration))
         if not draft_id:
             return ToolResponse(

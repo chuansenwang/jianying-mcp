@@ -66,7 +66,9 @@ def add_image_segment_service(
         
         # 记录图片片段映射到索引管理器
         if track_id and video_segment.video_segment_id:
+            # 图片片段用到的视频片段ID，同步记录到两类映射，确保后续视频类接口（如关键帧）可通过视频片段ID正常检索
             index_manager.add_image_segment_mapping(video_segment.video_segment_id, track_id, draft_id)
+            index_manager.add_video_segment_mapping(video_segment.video_segment_id, track_id)
         
         return ToolResponse(
             success=True,
