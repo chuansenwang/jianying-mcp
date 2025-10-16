@@ -387,5 +387,39 @@ class TextSegment:
             if track_type != "text":
                 raise TypeError(f"轨道 '{track_name}' 的类型是 '{track_type}'，不能添加文本片段")
 
+    def _get_next_available_time(self, segment_type: str, track_name: str) -> str:
+        """
+        获取轨道上可用的下一个时间点（即最后一个片段的结束时间）
 
+        Args:
+            segment_type: 片段类型
+            track_name: 轨道名称
 
+        Returns:
+            str: 下一个可用的开始时间，格式如 "5.2s"
+        """
+        try:
+            # 获取验证器实例
+            from jianyingdraft.validators.overlap_validator import OverlapValidator
+            validator = OverlapValidator(self.draft_id)
+
+            # 获取同轨道的现有片段
+            existing_segments = validator._get_segments_by_track(segment_type, track_name)
+
+            # 如果没有现有片段，返回0s
+            if not existing_segments:
+                return "0s"
+
+            # 找到最后一个片段的结束时间
+            max_end_time = 0
+            for segment in existing_segments:
+                time_range = validator._extract_timerange_from_segment(segment)
+                if time_range and time_range.end_microseconds > max_end_time:
+                    max_end_time = time_range.end_microseconds
+
+            # 转换为秒并格式化
+            return f"{max_end_time / 1_000_000:.3f}s"
+
+        except Exception as e:
+            print(f"计算下一个可用时间失败: {e}")
+            return "0s"
