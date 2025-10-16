@@ -43,7 +43,8 @@ class TextSegment:
                          clip_settings: Optional[Dict[str, Any]] = None,
                          border: Optional[Dict[str, Any]] = None,
                          background: Optional[Dict[str, Any]] = None,
-                         track_name: Optional[str] = None) -> Dict[str, Any]:
+                         track_name: Optional[str] = None,
+                         auto_next: bool = False) -> Dict[str, Any]:
         """
         创建文本片段配置，可选的参数用户没要求可不填
 
@@ -95,11 +96,33 @@ class TextSegment:
                         "vertical_offset": 0.5     # 背景竖直偏移, 与剪映中一致, 取值范围为[0, 1], 默认为0.5
                     }
             track_name: 指定的轨道名称（可选），如果不指定则使用实例的track_name
+            auto_next: 是否自动计算下一个可用时间位置（可选），默认为False
 
         Returns:
             Dict[str, Any]: 构造的参数字典
         """
         self.text_segment_id = str(uuid.uuid4())
+
+        # 如果启用了自动追加模式，则重新计算timerange
+        if auto_next:
+            # 解析duration
+            if not timerange or "-" not in timerange:
+                raise ValueError(f"Invalid timerange format: {timerange}")
+            
+            _, duration_str = timerange.split("-", 1)
+            duration = duration_str.strip()
+            
+            # 确定使用的轨道名称（参数优先，然后是实例属性）
+            final_track_name = track_name or self.track_name
+            
+            # 计算开始时间
+            start_time = "0s"
+            if final_track_name:
+                # 获取轨道上最后一个片段的结束时间作为开始时间
+                start_time = self._get_next_available_time("text", final_track_name)
+            
+            # 构造新的timerange参数
+            timerange = f"{start_time}-{duration}"
 
         # 解析timerange
         if not timerange or "-" not in timerange:

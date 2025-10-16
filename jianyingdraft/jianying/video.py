@@ -43,7 +43,8 @@ class VideoSegment:
                           volume: float = 1.0, change_pitch: bool = False,
                           clip_settings: Optional[Dict[str, Any]] = None,
                           track_name: Optional[str] = None,
-                          material_type: str = "video") -> Dict[str, Any]:
+                          material_type: str = "video",
+                          auto_next: bool = False) -> Dict[str, Any]:
         """
         创建视频片段配置
 
@@ -67,10 +68,18 @@ class VideoSegment:
                         }
             track_name: 指定的轨道名称（可选），如果不指定则使用实例的track_name
             material_type: 素材类型，支持 "video", "image"，默认为 "video"
+            auto_next: 是否自动在轨道上一个片段之后添加，默认False
 
         Returns:
             Dict[str, Any]: 构造的参数字典
         """
+        # 确定使用的轨道名称（参数优先，然后是实例属性）
+        final_track_name = track_name or self.track_name
+        
+        # 如果启用了自动下一个时间位置，则计算新的target_timerange
+        if auto_next and final_track_name:
+            target_timerange = self._calculate_next_time_position(final_track_name, target_timerange)
+        
         # if self.video_segment_id is None:
         #     raise ValueError("video_segment_id不能为空")
         video_segment_id = str(uuid.uuid4())
@@ -94,9 +103,6 @@ class VideoSegment:
                 "start": source_start_str.strip(),
                 "duration": source_duration_str.strip()
             }
-
-        # 确定使用的轨道名称（参数优先，然后是实例属性）
-        final_track_name = track_name or self.track_name
 
         # 下载并验证素材，获取本地化路径
         local_material_path = download_and_validate_material(
@@ -145,6 +151,90 @@ class VideoSegment:
         self.add_json_to_file(segment_data)
         self.video_segment_id = video_segment_id
         return add_video_segment_params
+
+    def _calculate_next_time_position(self, track_name: str, target_timerange: str) -> str:
+        """
+        计算轨道上下一个可用的时间位置
+        
+        Args:
+            track_name: 轨道名称
+            target_timerange: 原始时间范围
+            
+        Returns:
+            str: 计算后的时间范围
+        """
+        try:
+            # 解析原始时间范围
+            start_str, duration_str = target_timerange.split("-", 1)
+            
+            # 获取轨道上所有现有的视频片段
+            existing_segments = self._get_existing_video_segments(track_name)
+            
+            # 如果没有现有片段，则从0开始
+            if not existing_segments:
+                return target_timerange
+                
+            # 计算所有现有片段的结束时间，找出最大的结束时间
+            max_end_time = 0.0
+            for segment in existing_segments:
+                timerange_data = segment.get("add_video_segment", {}).get("target_timerange", {})
+                if timerange_data:
+                    start = self._time_str_to_seconds(timerange_data.get("start", "0s"))
+                    duration = self._time_str_to_seconds(timerange_data.get("duration", "0s"))
+                    end_time = start + duration
+                    max_end_time = max(max_end_time, end_time)
+            
+            # 新片段从最大结束时间开始
+            new_start_time = max_end_time
+            return f"{new_start_time:.2f}s-{duration_str}"
+            
+        except Exception as e:
+            print(f"计算下一个时间位置失败: {e}")
+            # 出错时返回原始时间范围
+            return target_timerange
+
+    def _get_existing_video_segments(self, track_name: str) -> List[Dict[str, Any]]:
+        """
+        获取指定轨道上所有现有的视频片段
+        
+        Args:
+            track_name: 轨道名称
+            
+        Returns:
+            List[Dict]: 视频片段列表
+        """
+        try:
+            file_path = f"{SAVE_PATH}/{self.draft_id}/video.json"
+            if not os.path.exists(file_path):
+                return []
+
+            with open(file_path, 'r', encoding='utf-8') as f:
+                all_segments = json.load(f)
+
+            # 筛选同轨道的视频片段
+            track_segments = []
+            for segment in all_segments:
+                if segment.get("track_name") == track_name and segment.get("operation") == "add_video_segment":
+                    track_segments.append(segment)
+
+            return track_segments
+        except Exception as e:
+            print(f"获取现有视频片段失败: {e}")
+            return []
+
+    def _time_str_to_seconds(self, time_str: str) -> float:
+        """
+        将时间字符串转换为秒数
+        
+        Args:
+            time_str: 时间字符串，如 "1.5s"
+            
+        Returns:
+            float: 秒数
+        """
+        if time_str.endswith('s'):
+            return float(time_str[:-1])
+        return float(time_str)
 
     def add_animation(self, animation_type: str, animation_name: str, duration: Optional[str] = None,
                       video_segment_id: Optional[str] = None) -> bool:
@@ -519,5 +609,3 @@ class VideoSegment:
             track_type = add_track_data.get("track_type")
             if track_type != "video":
                 raise TypeError(f"轨道 '{track_name}' 的类型是 '{track_type}'，不能添加视频片段")
-
-
