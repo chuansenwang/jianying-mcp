@@ -869,6 +869,21 @@ class ExportDraft:
                     source_duration = source_data.get("duration", "1s")
                     source_timerange = trange(source_start, source_duration)
 
+            # 处理clip_settings（视频片段的初始位移/缩放等设置）
+            clip_settings = None
+            if "clip_settings" in params:
+                clip_data = params["clip_settings"]
+                clip_settings = ClipSettings(
+                    alpha=clip_data.get("alpha", 1.0),
+                    flip_horizontal=clip_data.get("flip_horizontal", False),
+                    flip_vertical=clip_data.get("flip_vertical", False),
+                    rotation=clip_data.get("rotation", 0.0),
+                    scale_x=clip_data.get("scale_x", 1.0),
+                    scale_y=clip_data.get("scale_y", 1.0),
+                    transform_x=clip_data.get("transform_x", 0.0),
+                    transform_y=clip_data.get("transform_y", 0.0)
+                )
+
             # 创建VideoSegment
             video_segment = VideoSegment(
                 material=material,
@@ -876,7 +891,8 @@ class ExportDraft:
                 source_timerange=source_timerange,
                 speed=params.get("speed"),
                 volume=params.get("volume", 1.0),
-                change_pitch=params.get("change_pitch", False)
+                change_pitch=params.get("change_pitch", False),
+                clip_settings=clip_settings
             )
 
             self._log(f"创建VideoSegment成功: {material_path}")
