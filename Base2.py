@@ -19,7 +19,7 @@ from jianyingdraft.jianying.video import VideoSegment
 
 # 创建草稿
 draft = Draft()
-draft_id = draft.create_draft(draft_name='test2')['draft_id']
+draft_id = draft.create_draft(draft_name='test2_shake')['draft_id']
 print(draft_id)
 
 # 创建轨道
@@ -119,6 +119,10 @@ character2_video_segment.add_video_segment(
         "flip_horizontal": True  # 水平镜像，角色朝向左侧
     }
 )
+# 为角色2的第一个片段添加更强的闪光震动（color, range, background_animation, luminance, speed）
+# character2_video_segment.add_effect("抖动", [0.75,1])
+character2_video_segment.add_effect("摇摆", [0.75,1])
+# character2_video_segment.add_effect("闪光震动", [0, 90, 70, 90, 85])
 
 # 添加第二个角色2素材（保持靠近底部并避开裁切）
 character2_video_segment.add_video_segment(
@@ -134,6 +138,8 @@ character2_video_segment.add_video_segment(
     },
     auto_next=True
 )
+# 为角色2的第二个片段添加更强的闪光震动（color, range, background_animation, luminance, speed）
+character2_video_segment.add_effect("闪光震动", [0, 90, 70, 90, 85])
 
 # 导出到临时路径，避免剪映占用默认草稿目录导致锁定
 ExportDraft(output_path='D:/soft/JianyingPro Drafts').export(draft_id)
